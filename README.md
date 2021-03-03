@@ -39,5 +39,5 @@ for n in range(500):
 实际上就是反向求偏导。
 E.g. 计算loss对w2的偏导过程如下：
 -  ![](https://latex.codecogs.com/svg.latex?\frac{\partial&space;loss}{\partial&space;w_2}=\frac{\partial&space;loss}{\partial&space;yPred}&space;\times&space;\frac{\partial&space;yPred}{\partial&space;w_2})
-- ![](https://latex.codecogs.com/svg.latex?\frac{\partial&space;loss}{\partial&space;w_2}=2(yPred-y)&space;\times&space;hRelu)
+- ![](https://latex.codecogs.com/svg.latex?2(yPred-y)hRelu)
 
