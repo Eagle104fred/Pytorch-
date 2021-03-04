@@ -74,3 +74,42 @@ for n in range(500):
         w2.grad.zero_()
 
 ```
+## 4.Define my autograd function
+
+## 5.nn
+把隐藏层的参数矩阵封装成model,这样可以直接调用loss函数进行运算
+```
+import torch
+import torch.nn as nn
+
+device = torch.device('cuda')
+N,D_in,D_out,H = 64,1000,10,100
+x = torch.randn(N,D_in,device=device)
+y = torch.randn(N,D_out,device=device)
+
+#把隐藏层的参数矩阵封装成model
+model = nn.Sequential(
+        nn.Linear(D_in,H),
+        nn.ReLU(),
+        nn.Linear(H,D_out),
+).to(device)
+
+#申请nn内部的loss函数
+loss_fn = nn.MSELoss(reduction='sum')
+lr = 1e-4
+for n in range(500):
+    y_pred=model(x)
+    loss = loss_fn(y_pred,y)
+    print(n,loss.item())
+    #反向传播前先把梯度归零
+    model.zero_grad()
+    
+    loss.backward()
+    
+    with torch.no_grad():
+        for param in model.parameters():
+            param -=lr*param.grad```
+
+
+
+```
