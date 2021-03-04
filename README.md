@@ -45,7 +45,7 @@ for n in range(500):
 -  ![](https://latex.codecogs.com/svg.latex?\frac{\partial&space;loss}{\partial&space;w_2}=\frac{\partial&space;loss}{\partial&space;yPred}&space;\times&space;\frac{\partial&space;yPred}{\partial&space;w_2})![](https://latex.codecogs.com/svg.latex?=)![](https://latex.codecogs.com/svg.latex?2(yPred-y)hRelu)
 
 ## 3.Autograd
-```
+```python
 import torch
 device = torch.device('cuda')
 
@@ -78,7 +78,7 @@ for n in range(500):
 
 ## 5.nn
 把隐藏层的参数矩阵封装成model,这样可以直接调用loss函数进行运算
-```
+```python
 import torch
 import torch.nn as nn
 
@@ -114,7 +114,7 @@ for n in range(500):
 
 ## 6.Optim
 运用优化功能，自动计算模型的参数
-···
+···python
 import torch
 import torch.nn as nn
 
