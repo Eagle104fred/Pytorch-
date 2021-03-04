@@ -44,3 +44,33 @@ for n in range(500):
 - E.g. 计算loss对w2的偏导过程如下：
 -  ![](https://latex.codecogs.com/svg.latex?\frac{\partial&space;loss}{\partial&space;w_2}=\frac{\partial&space;loss}{\partial&space;yPred}&space;\times&space;\frac{\partial&space;yPred}{\partial&space;w_2})![](https://latex.codecogs.com/svg.latex?=)![](https://latex.codecogs.com/svg.latex?2(yPred-y)hRelu)
 
+## 3.Autograd
+```
+import torch
+device = torch.device('cuda')
+
+N,D_in,H,D_out = 64,1000,100,10
+
+x=torch.randn(N,D_in,device=device)
+y=torch.randn(N,D_out,device=device)
+w1 = torch.randn(D_in,H,device=device,requires_grad=True)
+w2 = torch.randn(H,D_out,device=device,requires_grad=True)
+lr=1e-6
+
+for n in range(500):
+    y_pred = x.mm(w1).clamp(min=0).mm(w2)
+    
+    loss = (y_pred-y).pow(2).sum()
+    print(n,loss.item())
+    
+    loss.backward()#反向传播，自动求导
+    
+    with torch.no_grad():
+        w1 -= lr * w1.grad
+        w2 -= lr * w2.grad
+        
+        # Manually zero the gradients after running the backward pass
+        w1.grad.zero_()
+        w2.grad.zero_()
+
+```
