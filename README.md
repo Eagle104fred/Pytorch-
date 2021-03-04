@@ -16,9 +16,9 @@ lr=1e-6                                #学习率learningRate
 for n in range(500):
     #注意模型点积后矩阵大小
     h=x.dot(w1)                        #64*100
-    h_relu=np.maximum(h,0).            #relu 这里是一个模仿激活函数relu的操作，直接屏蔽了小于0的值
-    y_pred = h_relu.dot(w2).           #64*10
-    loss = np.square(y_pred-y).sum()   #将矩阵元素相加方便计算y_pred和y矩阵的差值
+    h_relu=np.maximum(h,0)             #relu 这里是一个模仿激活函数relu的操作，直接屏蔽了小于0的值
+    y_pred = h_relu.dot(w2)            #64*10
+    loss = np.square(y_pred-y).sum()   #将矩阵元素相加方便计算y_pred和y矩阵的差值，开平方为了扩大元素值之间的差距方便更好的学习
     print(n,loss)
     
     #反向传播(求偏导的过程)
