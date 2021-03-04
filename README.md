@@ -110,6 +110,39 @@ for n in range(500):
         for param in model.parameters():
             param -=lr*param.grad```
 
-
-
 ```
+
+## 6.Optim
+运用优化功能，自动计算模型的参数
+···
+import torch
+import torch.nn as nn
+
+device = torch.device('cuda')
+
+N,D_in,H,D_out = 64,1000,100,10
+
+x=torch.randn(N,D_in,device=device)
+y=torch.randn(N,D_out,device=device)
+
+model = nn.Sequential(
+    nn.Linear(D_in,H),
+    nn.ReLU(),
+    nn.Linear(H,D_out),
+).to(device)
+lr = 1e-4
+optimizer = torch.optim.Adam(model.parameters(),lr)
+
+loss_fn = nn.MSELoss(reduction='sum')
+
+for n in range(500):
+    y_pred = model(x)
+    loss = loss_fn(y_pred,y)
+    print(n,loss.item())
+    
+    optimizer.zero_grad()
+    loss.backward()
+    
+    #自动计算参数
+    optimizer.step()
+···
