@@ -101,6 +101,7 @@ for n in range(500):
     y_pred=model(x)
     loss = loss_fn(y_pred,y)
     print(n,loss.item())
+    
     #反向传播前先把梯度归零
     model.zero_grad()
     
@@ -111,7 +112,12 @@ for n in range(500):
             param -=lr*param.grad```
 
 ```
-
+那么问题就来了为什么要警醒梯度归零呢？
+    - 由于pytorch的动态计算图，当我们使用loss.backward()和opimizer.step()进行梯度下降更新参数的时候，梯度并不会自动清零。并且这两个操作是独立操作。
+    - backward()：反向传播求解梯度。
+    - step()：更新权重参数。
+- 基于以上几点，正好说明了pytorch的一个特点是每一步都是独立功能的操作，因此也就有需要梯度清零的说法，如若不显示的进行optimizer.zero_grad()这一步操作，backward()的时候就会累加梯度，也就有了梯度累加这种trick。
+[梯度累加](https://blog.csdn.net/weixin_45997273/article/details/106720446)
 ## 6.Optim
 运用优化功能，自动计算模型的参数
 ···python
@@ -144,5 +150,5 @@ for n in range(500):
     loss.backward()
     
     #自动计算参数
-    optimizer.step()
+    optimizer.step()#根据梯度更新网络参数简单的说就是进来一个batch的数据，计算一次梯度，更新一次网络。
 ···
