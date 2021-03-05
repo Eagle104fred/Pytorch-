@@ -129,7 +129,7 @@ for t in range(500):
 
 
 
-···
+```
 ## 5.nn
 把隐藏层的参数矩阵封装成model,这样可以直接调用loss函数进行运算
 ```python
