@@ -243,3 +243,46 @@ for n in range(500):
     #自动计算参数
     optimizer.step()#根据梯度更新网络参数简单的说就是进来一个batch的数据，计算一次梯度，更新一次网络。
 ···
+
+7.Custom nn Modules
+```python
+import torch
+import torch.nn as nn
+
+class TwoLayerNet(nn.Module):
+    #实例化两个参数矩阵w1w2
+    def __init__(self,D_in,H,D_out):
+        super(TwoLayerNet,self).__init__();
+        self.linear1 = nn.Linear(D_in,H);
+        self.linear2 = nn.Linear(H,D_out);
+        
+    def forward(self,x):
+        '''
+        在Forward函数中，前向传播过程，我们接受输入数据的张量，并且必须返回
+        输出数据的Tensor。我们可以使用构造函数中定义的Modules
+        以及Tensors上的任意（可微分）操作。
+        '''
+        h_relu = self.linear1(x).clamp(min=0)
+        y_pred = self.linear2(h_relu)
+        return y_pred
+N,D_in,H,D_out = 64,1000,100,10;
+
+x = torch.randn(N,D_in);
+y = torch.randn(N,D_out);
+
+model = TwoLayerNet(D_in,H,D_out);
+
+loss_fn = nn.MSELoss(reduction='sum');
+
+lr = 1e-4;
+optimizer = torch.optim.SGD(model.parameters(),lr);
+for n in range(500):
+    y_pred = model(x);
+    
+    loss = loss_fn(y_pred,y);
+    print(n,loss.item());
+    
+    optimizer.zero_grad();
+    loss.backward();
+    optimizer.step();
+```
