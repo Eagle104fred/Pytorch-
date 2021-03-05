@@ -174,7 +174,7 @@ for n in range(500):
 [梯度累加](https://blog.csdn.net/weixin_45997273/article/details/106720446)
 ## 6.Optim
 运用优化功能，自动计算模型的参数
-···python
+```python
 import torch
 import torch.nn as nn
 
