@@ -76,7 +76,7 @@ for n in range(500):
 
 ```
 ## 4.Define my autograd function
-···
+```
 import torch
 import torch.nn
 
@@ -125,11 +125,11 @@ for t in range(500):
 
         w1.grad.zero_()
         w2.grad.zero_()
-
-
-
-
 ```
+
+
+
+
 ## 5.nn
 把隐藏层的参数矩阵封装成model,这样可以直接调用loss函数进行运算
 ```python
