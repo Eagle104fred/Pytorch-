@@ -244,7 +244,7 @@ for n in range(500):
     optimizer.step()#根据梯度更新网络参数简单的说就是进来一个batch的数据，计算一次梯度，更新一次网络。
 ···
 
-7.Custom nn Modules
+## 7.Custom nn Modules
 ```python
 import torch
 import torch.nn as nn
