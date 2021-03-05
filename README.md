@@ -45,6 +45,7 @@ for n in range(500):
 -  ![](https://latex.codecogs.com/svg.latex?\frac{\partial&space;loss}{\partial&space;w_2}=\frac{\partial&space;loss}{\partial&space;yPred}&space;\times&space;\frac{\partial&space;yPred}{\partial&space;w_2})![](https://latex.codecogs.com/svg.latex?=)![](https://latex.codecogs.com/svg.latex?2(yPred-y)hRelu)
 
 ## 3.Autograd
+对比之前的操作，会发现Pytorch大大降低了手工操作的负担，只需要在设定的时候增加requires_grad=True，在最后对权重进行归零即可。
 ```python
 import torch
 device = torch.device('cuda')
@@ -69,7 +70,7 @@ for n in range(500):
         w1 -= lr * w1.grad
         w2 -= lr * w2.grad
         
-        # Manually zero the gradients after running the backward pass
+        #梯度归零
         w1.grad.zero_()
         w2.grad.zero_()
 
