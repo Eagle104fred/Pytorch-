@@ -76,7 +76,13 @@ for n in range(500):
 
 ```
 ## 4.Define my autograd function
-```
+在底层，每次原始的autograd操作都是对Tensor的两个方法的操作。
+
+- forward方法用于计算输入Tensor
+- backward方法获取输出的梯度，并且计算输入Tensors相对于该相同标量值的梯度
+在Pytorch中，可以容易定义自己的autograd操作，通过定义子类torch.autograd.Function来实现forward和backward函数，然后就可以通过构建实例并进行调用来使用新的autograd运算符。传递包含输入数据的Variables。
+
+```python
 import torch
 import torch.nn
 
