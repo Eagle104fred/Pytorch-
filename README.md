@@ -179,6 +179,7 @@ for n in range(500):
 - 基于以上几点，正好说明了pytorch的一个特点是每一步都是独立功能的操作，因此也就有需要梯度清零的说法，如若不显示的进行optimizer.zero_grad()这一步操作，backward()的时候就会累加梯度，也就有了梯度累加这种trick。
 - 总结：梯度累加就是，每次获取1个batch的数据，计算1次梯度，梯度不清空，不断累加，累加一定次数后，根据累加的梯度更新网络参数，然后清空梯度，进行下一次循环。一定条件下，batchsize越大训练效果越好，梯度累加则实现了batchsize的变相扩大，如果accumulation_steps为8，则batchsize ‘变相’ 扩大了8倍，是我们这种乞丐实验室解决显存受限的一个不错的trick，使用时需要注意，学习率也要适当放大。
 [梯度累加](https://blog.csdn.net/weixin_45997273/article/details/106720446)
+### 5-1.Gradient Accumulate
 ```python
 import torch.nn as nn
 
