@@ -45,6 +45,7 @@ for n in range(500):
 -  ![](https://latex.codecogs.com/svg.latex?\frac{\partial&space;loss}{\partial&space;w_2}=\frac{\partial&space;loss}{\partial&space;yPred}&space;\times&space;\frac{\partial&space;yPred}{\partial&space;w_2})![](https://latex.codecogs.com/svg.latex?=)![](https://latex.codecogs.com/svg.latex?2(yPred-y)hRelu)
 
 ## 3.Autograd
+对比之前的操作，会发现Pytorch大大降低了手工操作的负担，只需要在设定的时候增加requires_grad=True，在最后对权重进行归零即可。
 ```python
 import torch
 device = torch.device('cuda')
@@ -69,13 +70,19 @@ for n in range(500):
         w1 -= lr * w1.grad
         w2 -= lr * w2.grad
         
-        # Manually zero the gradients after running the backward pass
+        #梯度归零
         w1.grad.zero_()
         w2.grad.zero_()
 
 ```
 ## 4.Define my autograd function
-···
+在底层，每次原始的autograd操作都是对Tensor的两个方法的操作。
+
+- forward方法用于计算输入Tensor
+- backward方法获取输出的梯度，并且计算输入Tensors相对于该相同标量值的梯度
+在Pytorch中，可以容易定义自己的autograd操作，通过定义子类torch.autograd.Function来实现forward和backward函数，然后就可以通过构建实例并进行调用来使用新的autograd运算符。传递包含输入数据的Variables。
+
+```python
 import torch
 import torch.nn
 
@@ -124,11 +131,11 @@ for t in range(500):
 
         w1.grad.zero_()
         w2.grad.zero_()
+```
 
 
 
 
-···
 ## 5.nn
 把隐藏层的参数矩阵封装成model,这样可以直接调用loss函数进行运算
 ```python
@@ -242,3 +249,105 @@ for n in range(500):
     #自动计算参数
     optimizer.step()#根据梯度更新网络参数简单的说就是进来一个batch的数据，计算一次梯度，更新一次网络。
 ···
+
+## 7.Custom nn Modules
+```python
+import torch
+import torch.nn as nn
+
+class TwoLayerNet(nn.Module):
+    #实例化两个参数矩阵w1w2
+    def __init__(self,D_in,H,D_out):
+        super(TwoLayerNet,self).__init__();
+        self.linear1 = nn.Linear(D_in,H);
+        self.linear2 = nn.Linear(H,D_out);
+        
+    def forward(self,x):
+        '''
+        在Forward函数中，前向传播过程，我们接受输入数据的张量，并且必须返回
+        输出数据的Tensor。我们可以使用构造函数中定义的Modules
+        以及Tensors上的任意（可微分）操作。
+        '''
+        h_relu = self.linear1(x).clamp(min=0)
+        y_pred = self.linear2(h_relu)
+        return y_pred
+N,D_in,H,D_out = 64,1000,100,10;
+
+x = torch.randn(N,D_in);
+y = torch.randn(N,D_out);
+
+model = TwoLayerNet(D_in,H,D_out);
+
+loss_fn = nn.MSELoss(reduction='sum');
+
+lr = 1e-4;
+optimizer = torch.optim.SGD(model.parameters(),lr);
+for n in range(500):
+    y_pred = model(x);
+    
+    loss = loss_fn(y_pred,y);
+    print(n,loss.item());
+    
+    optimizer.zero_grad();
+    loss.backward();
+    optimizer.step();
+```
+
+## 8.ControlFlow-WightSharing
+```python
+import random
+import torch
+import torch.nn as nn
+
+class DynamicNet(nn.Module):
+    def __init__(self,D_in,H,D_out):
+        super(DynamicNet,self).__init__();
+        self.input_linear = nn.Linear(D_in,H);
+        self.middle_linear = nn.Linear(H,H);
+        self.output_linear = nn.Linear(H,D_out);
+        
+    def forward(self,x):
+    '''
+        对于模型的前向传递，我们随机选择0、1、2或3，然后多次重复使用middle_linear
+        模块来计算隐藏层表示。
+
+        由于每个前向传播都会构建一个动态计算图，因此在定义模型的前向传播时，
+        我们可以使用常规的Python控制流操作符，如循环或条件语句。
+
+        在这里我们还看到，在定义计算图时，多次重用同一个模块是完全可行的，
+        这是Lua Torch对于每个模块只能使用一次的一大改进
+    '''
+        h_relu = self.input_linear(x).clamp(min = 0);
+        for _ in range(random.randint(0,3)):
+            h_relu = self.middle_linear(h_relu).clamp(min = 0);
+        y_pred = self.output_linear(h_relu);
+        return y_pred;
+    
+    
+    
+N,D_in,H,D_out = 64,1000,100,10;
+
+x = torch.randn(N,D_in);
+y = torch.randn(N,D_out);
+
+model = DynamicNet(D_in,H,D_out);
+
+loss_fn = torch.nn.MSELoss(reduction='sum');
+
+#使用普通的随机梯度下降训练这种奇怪的模型很困难，因此我们使用momentum(动量)
+optimizer = torch.optim.SGD(model.parameters(),lr=1e-4,momentum=0.9);
+
+for n in range(500):
+    y_pred = model(x);
+    loss = loss_fn(y_pred,y);
+    print(n,loss.item());
+    
+    optimizer.zero_grad();
+    loss.backward();
+    optimizer.step();
+```
+### momentum
+“冲量”这个概念源自于物理中的力学，表示力对时间的积累效应。在普通的情况下x的更新 在加上冲量后就是在普通的情况下加上上次更新的x的与mom[0,1]的乘积
+- ![](https://img-blog.csdnimg.cn/2020051516503830.png)
+- 当本次梯度下降- dx * lr的方向与上次更新量v的方向相同时，上次的更新量能够对本次的搜索起到一个正向加速的作用。
+- 当本次梯度下降- dx * lr的方向与上次更新量v的方向相反时，上次的更新量能够对本次的搜索起到一个减速的作用。
