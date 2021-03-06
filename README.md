@@ -292,3 +292,62 @@ for n in range(500):
     loss.backward();
     optimizer.step();
 ```
+
+## 8.ControlFlow-WightSharing
+```python
+import random
+import torch
+import torch.nn as nn
+
+class DynamicNet(nn.Module):
+    def __init__(self,D_in,H,D_out):
+        super(DynamicNet,self).__init__();
+        self.input_linear = nn.Linear(D_in,H);
+        self.middle_linear = nn.Linear(H,H);
+        self.output_linear = nn.Linear(H,D_out);
+        
+    def forward(self,x):
+    '''
+        对于模型的前向传递，我们随机选择0、1、2或3，然后多次重复使用middle_linear
+        模块来计算隐藏层表示。
+
+        由于每个前向传播都会构建一个动态计算图，因此在定义模型的前向传播时，
+        我们可以使用常规的Python控制流操作符，如循环或条件语句。
+
+        在这里我们还看到，在定义计算图时，多次重用同一个模块是完全可行的，
+        这是Lua Torch对于每个模块只能使用一次的一大改进
+    '''
+        h_relu = self.input_linear(x).clamp(min = 0);
+        for _ in range(random.randint(0,3)):
+            h_relu = self.middle_linear(h_relu).clamp(min = 0);
+        y_pred = self.output_linear(h_relu);
+        return y_pred;
+    
+    
+    
+N,D_in,H,D_out = 64,1000,100,10;
+
+x = torch.randn(N,D_in);
+y = torch.randn(N,D_out);
+
+model = DynamicNet(D_in,H,D_out);
+
+loss_fn = torch.nn.MSELoss(reduction='sum');
+
+#使用普通的随机梯度下降训练这种奇怪的模型很困难，因此我们使用momentum(动量)
+optimizer = torch.optim.SGD(model.parameters(),lr=1e-4,momentum=0.9);
+
+for n in range(500):
+    y_pred = model(x);
+    loss = loss_fn(y_pred,y);
+    print(n,loss.item());
+    
+    optimizer.zero_grad();
+    loss.backward();
+    optimizer.step();
+```
+### momentum
+“冲量”这个概念源自于物理中的力学，表示力对时间的积累效应。在普通的情况下x的更新 在加上冲量后就是在普通的情况下加上上次更新的x的与mom[0,1]的乘积
+- ![](https://img-blog.csdnimg.cn/2020051516503830.png)
+- 当本次梯度下降- dx * lr的方向与上次更新量v的方向相同时，上次的更新量能够对本次的搜索起到一个正向加速的作用。
+- 当本次梯度下降- dx * lr的方向与上次更新量v的方向相反时，上次的更新量能够对本次的搜索起到一个减速的作用。
