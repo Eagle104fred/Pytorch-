@@ -179,6 +179,7 @@ for n in range(500):
 - 基于以上几点，正好说明了pytorch的一个特点是每一步都是独立功能的操作，因此也就有需要梯度清零的说法，如若不显示的进行optimizer.zero_grad()这一步操作，backward()的时候就会累加梯度，也就有了梯度累加这种trick。
 - 总结：梯度累加就是，每次获取1个batch的数据，计算1次梯度，梯度不清空，不断累加，累加一定次数后，根据累加的梯度更新网络参数，然后清空梯度，进行下一次循环。一定条件下，batchsize越大训练效果越好，梯度累加则实现了batchsize的变相扩大，如果accumulation_steps为8，则batchsize ‘变相’ 扩大了8倍，是我们这种乞丐实验室解决显存受限的一个不错的trick，使用时需要注意，学习率也要适当放大。
 [梯度累加](https://blog.csdn.net/weixin_45997273/article/details/106720446)
+### 5-1.Gradient Accumulate
 ```python
 import torch.nn as nn
 
@@ -351,3 +352,163 @@ for n in range(500):
 - ![](https://img-blog.csdnimg.cn/2020051516503830.png)
 - 当本次梯度下降- dx * lr的方向与上次更新量v的方向相同时，上次的更新量能够对本次的搜索起到一个正向加速的作用。
 - 当本次梯度下降- dx * lr的方向与上次更新量v的方向相反时，上次的更新量能够对本次的搜索起到一个减速的作用。
+
+# 9.Pytorch-Vision
+这次我们来建立一个简单的图片分类网络，使用 CIFAR10 数据集,该数据集一共有10个分类
+```python
+import torch 
+import torchvision 
+from torchvision import transforms as tf 
+
+import torch.nn as nn 
+import torch.nn.functional as F
+
+from tqdm import tqdm 
+import time
+
+#封装了两个方法，一个是把数据从numpy转到tensor方便gpu运算，一个是图片二值化
+tf = tf.Compose([
+    tf.ToTensor(),
+    tf.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
+])
+
+batch = 4#batch大小
+
+把数据集图片读到loader里面存好并进行shuffle乱序处理和分成batch，并加载Compose的处理
+dataset = torchvision.datasets.CIFAR10(root='../data',train=True,download = False,transform=tf)
+dataloader = torch.utils.data.DataLoader(dataset,batch_size = batch,shuffle = True,num_workers = 2)
+testset = torchvision.datasets.CIFAR10(root='../data',train = False,download = False,transform=tf)
+testloader = torch.utils.data.DataLoader(testset,batch_size = batch,shuffle = True,num_workers = 2)
+
+classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+
+
+#构建模型
+class Module(nn.Module):
+    def __init__(self):
+        super(Module,self).__init__()
+        self.conv1 = nn.Conv2d(3,6,5)#in:3 out:6 kernal:5 -> h=w=28
+        self.pool = nn.MaxPool2d(2,2)#池化层h=w=h/2
+        self.conv2 = nn.Conv2d(6,16,5)#in:6 out:16 kernal:5 -> h=w=10 ->池化:h=w=10/2=5
+        self.fc1 = nn.Linear(16* 5*5 ,120)#所以全连接入口为5*5*16
+        self.fc2 = nn.Linear(120,84)
+        self.fc3 = nn.Linear(84,10)
+        
+    def forward(self,x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1,16*5*5)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+        
+epoch = 3
+lr = 0.001
+momentum = 0.9
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+print(device)
+module = Module()#初始化模型
+module.to(device)#把模型转到GPU
+loss_fn = nn.CrossEntropyLoss()#loss函数使用交叉熵函数
+optimizer = torch.optim.SGD(y.parameters(),lr=lr,momentum=momentum)#优化使用SGD
+
+#开始训练
+start = time.time()
+
+run_loss = 0.0#累计的损失，计算一个epoch的总损失
+for n in range(epoch):
+    for i,data in tqdm(enumerate(dataloader,0)):
+        inputs,labels = data 
+        inputs,labels = inputs.to(device),labels.to(device)
+        
+        optimizer.zero_grad()
+
+        outputs = module(inputs)
+        
+        loss = loss_fn(outputs,labels)
+        
+        loss.backward()
+        optimizer.step()
+        
+        run_loss+=loss.item()
+        if i%2000==1999:
+            print(n,run_loss)
+            run_loss = 0.0
+            
+print('Finished Training! Total cost time: ', time.time()-start)
+
+#展示图片
+import matplotlib.pyplot as plt
+import numpy as np
+# 展示图片的函数
+def imshow(img):
+    img = img / 2 + 0.5     # 非归一化
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    plt.show()
+
+#单步测试图片
+dataiter = iter(testloader)
+images, labels = dataiter.next()
+
+# 打印图片
+imshow(torchvision.utils.make_grid(images))
+#打印GT
+print('GroundTruth: ', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
+#打印Pred
+images = images.to(device)
+outputs = module(images)
+_,pred = torch.max(outputs,1)
+print('Predicted: ', ' '.join('%5s' % classes[pred[j]] for j in range(4)))
+
+#检测整体模型的精度
+correct = 0
+total = 0
+with torch.no_grad():
+    for data in testloader:
+        
+        images, labels = data#从loader中以此把参数取出来
+        images,labels = images.to(device),labels.to(device)#转换到GPU
+        
+        outputs = module(images)
+        _, pred = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (pred == labels).sum().item()
+
+print('Accuracy of the network on the 10000 test images: %d %%' % (100 * correct / total))
+
+
+#检测每个分类的精度
+class_correct = list(0. for i in range(10))
+class_total = list(0. for i in range(10))
+with torch.no_grad():
+    for data in testloader:
+        images, labels = data
+        images,labels = images.to(device),labels.to(device)#转换到GPU
+        
+        outputs = module(images)
+        _, pred = torch.max(outputs.data, 1)
+        c = (pred == labels).squeeze()
+        for i in range(4):
+            label = labels[i]
+            class_correct[label] += c[i].item()
+            class_total[label] += 1
+
+for i in range(10):
+    print('Accuracy of %5s : %2d %%' % (classes[i], 100 * class_correct[i] / class_total[i]))
+```
+## tf.Normalize
+- Normalize对每个通道执行以下操作：image =（图像-平均值）/ std在您的情况下，参数mean，std分别以0.5和0.5的形式传递。这将使图像在[-1,1]范围内归一化。
+精确值是通过分别计算R,G,B三个通道的数据算出来的，
+比如你有2张图片，都是100100大小的，那么两图片的像素点共有2100*100 = 20 000 个； 那么这两张图片的
+    -  mean求法：这20000个像素点的R值加起来，除以像素点的总数，这里是20000；mean_G 和mean_B 两个通道 的计算方法 一样的。
+
+    - 标准差求法：首先标准差就是开了方的方差，所以其实就是求方差，方差公式就是我们数学上的那个求方差的公式：
+
+- 也是3个通道分开算:
+    - 比如算R通道的， 这里X就为20000个像素点 各自的R值，再减去R均值，上面已经算好了；
+    - 然后平方；
+    - 然后20000个像素点相加，然后求平均除以20000，得到R的方差，再开方得标准差。
